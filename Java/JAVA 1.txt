@@ -1,0 +1,44 @@
+JAVA 1:
+James Goseling...WORA (write once, run anywhere)
+
+Java Creation and Running without IDE:
+	create a file with extention .java
+	write some code
+	complilation:
+	javac filename.java
+	--> creation of byte code (.class)
+
+	Run (Execution):
+	java classname
+	
+Conventions in Java:	
+	1. Class, interface
+		Are always title case
+		System --> Class
+		String --> Class
+		ActionListener --> interface
+	2. Variable (nouns)
+		Are always camel case
+		1. if there is only one word, all lowercase
+		2. if there is more than one word, 
+				first word --> lowercase, 
+				from there Every word's first letter is Capital
+	3. Method (function) (verbs)
+		Are always camel case
+		1. if there is only one word, all lowercase
+		2. if there is more than one word, 
+				first word --> lowercase, 
+				from there Every word's first letter is Capital
+		eg. helloWorld, thisIsNathiFromThub
+	4. constants
+		all capital letters PI, TAU
+		
+		
+Steps to compile and run a java program through a CLI
+
+	1. NAvigate to the folder where the java source file exits
+	2. Open CLI from there or navigate in CLI too
+	3. Compile: javac filename.java
+	4. Run: java classname
+
+

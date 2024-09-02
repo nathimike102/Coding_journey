@@ -1,0 +1,10 @@
+Python:
+	->python is dynamically typed programming language.
+	->no need of specifying data type for a variable
+	Numeric types:
+		->int, float, complex
+	Sequence types:
+		->list(mutable), tuple(immutable - cannot change), range
+	String type:
+		->str
+	
