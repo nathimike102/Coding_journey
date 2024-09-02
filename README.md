@@ -1,9 +1,5 @@
 <!DOCTYPE html>  
 <html lang="en">  
-<head>  
-    <meta charset="UTF-8">  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">  
-</head>  
 <body class="bg-gray-100 text-gray-800 p-6">  
     <h1 class="text-3xl font-bold mb-4">Coding Journey</h1>  
     <p class="mb-4">Welcome to the Coding Journey repository! This repository is a collection of resources, projects, and exercises focused on advanced data structures, programming in Python and Java, and various current projects.</p>  
