@@ -1,0 +1,1 @@
+{"name":"Local: sliding_window_sum","url":"/home/ghost/Desktop/coding/sliding_window_sum.cpp","tests":[{"id":1768989221635,"input":"8 5\n3 7 1 11","output":"12"}],"interactive":false,"memoryLimit":1024,"timeLimit":3000,"srcPath":"/home/ghost/Desktop/coding/sliding_window_sum.cpp","group":"local","local":true}

@@ -1,0 +1,1 @@
+{"name":"Local: sliding_window_min","url":"/home/ghost/Desktop/coding/sliding_window_min.cpp","tests":[{"id":1768990143042,"input":"8 5\n3 7 1 11","output":"3"}],"interactive":false,"memoryLimit":1024,"timeLimit":3000,"srcPath":"/home/ghost/Desktop/coding/sliding_window_min.cpp","group":"local","local":true}
