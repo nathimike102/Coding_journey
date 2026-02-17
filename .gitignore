@@ -1,0 +1,14 @@
+.vscode
+.cph
+.idea
+*.iml
+*.log
+*.tmp
+node_modules
+dist
+build
+coverage
+*.env
+*.local
+.DS_Store
+*.swp
