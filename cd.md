@@ -1,1397 +1,805 @@
-# Compiler Design - 10 Marks Comprehensive Answers
+# SPM Question Bank (Unit III-V) - Comprehensive 10-Mark Answers
 
-## Unit 3
+This answer bank is prepared from the provided materials:
 
-### 1) Define Attributed Grammar. Explain S-attributed and L-attributed Grammars with example.
-
-An attributed grammar is a context-free grammar (CFG) augmented with attributes and semantic rules.
-
-- Attributes store semantic information associated with grammar symbols.
-- Semantic rules define how attribute values are computed.
-- Attribute evaluation helps in type checking, intermediate code generation, declaration processing, and translation.
-
-Types of attributes:
-
-- Synthesized attribute: computed from attributes of children in the parse tree.
-- Inherited attribute: computed from parent or siblings.
-
-#### S-attributed grammar
-
-A grammar is S-attributed if it uses only synthesized attributes.
-
-- Evaluation is naturally bottom-up.
-- Very suitable for LR parsing.
-
-Example (expression value computation):
-
-Grammar:
-
-```text
-E -> E1 + T
-E -> T
-T -> T1 * F
-T -> F
-F -> (E)
-F -> num
-```
-
-Semantic rules:
-
-```text
-E -> E1 + T     { E.val = E1.val + T.val }
-E -> T          { E.val = T.val }
-T -> T1 * F     { T.val = T1.val * F.val }
-T -> F          { T.val = F.val }
-F -> (E)        { F.val = E.val }
-F -> num        { F.val = num.lexval }
-```
-
-All attributes are synthesized (`val`), so this is S-attributed.
-
-#### L-attributed grammar
-
-A grammar is L-attributed if inherited attributes are allowed under this restriction:
-
-For production `A -> X1 X2 ... Xn`, inherited attribute of `Xi` may depend only on:
-
-- attributes of `A`, and
-- attributes of `X1 ... X(i-1)` (symbols to its left).
-
-This supports left-to-right evaluation and suits top-down parsing.
-
-Example (declaration type propagation):
-
-Grammar:
-
-```text
-D -> T L
-T -> int
-T -> float
-L -> L1 , id
-L -> id
-```
-
-Attributes:
-
-- `T.type` is synthesized (`int` or `float`).
-- `L.in` is inherited type from `T`.
-
-Semantic rules:
-
-```text
-D -> T L         { L.in = T.type }
-T -> int         { T.type = int }
-T -> float       { T.type = float }
-L -> L1 , id     { L1.in = L.in; addType(id.entry, L.in) }
-L -> id          { addType(id.entry, L.in) }
-```
-
-Why L-attributed:
-
-- Inherited attribute `L1.in` depends on parent/left context only.
-
-Comparison:
-
-- S-attributed: only synthesized, easiest for bottom-up.
-- L-attributed: synthesized + restricted inherited, works with single left-to-right pass.
+- `SPM UNIT 3.pdf`
+- `spm_unit4.pdf`
+- `SPM UNIT 5.pdf`
+- `MID 2 Question Bank SPM.docx`
 
 ---
 
-### 2) Explain control flow for various control structures.
-
-Control flow determines execution order of statements. In intermediate code, control constructs are converted into labels and jumps.
-
-#### (a) if statement
-
-Source:
-
-```text
-if (B) S
-```
-
-Three-address style:
-
-```text
-if B goto Ltrue
-goto Lnext
-Ltrue: S
-Lnext:
-```
-
-#### (b) if-else statement
-
-```text
-if (B) S1 else S2
-```
-
-```text
-if B goto L1
-goto L2
-L1: S1
-    goto Lnext
-L2: S2
-Lnext:
-```
-
-#### (c) while loop
-
-```text
-while (B) S
-```
-
-```text
-Lbegin: if B goto Lbody
-        goto Lnext
-Lbody:  S
-        goto Lbegin
-Lnext:
-```
-
-#### (d) do-while loop
-
-```text
-do S while(B)
-```
-
-```text
-Lbody: S
-       if B goto Lbody
-Lnext:
-```
-
-#### (e) for loop
-
-```text
-for (init; B; inc) S
-```
-
-```text
-init
-Ltest: if B goto Lbody
-       goto Lnext
-Lbody: S
-Linc:  inc
-       goto Ltest
-Lnext:
-```
-
-#### (f) switch-case
-
-General strategy:
-
-- Evaluate switch expression once.
-- Compare with case constants.
-- Jump to matching label; else default.
-
-```text
-t = E
-if t == c1 goto L1
-if t == c2 goto L2
-...
-goto Ldefault
-L1: S1; goto Lnext
-L2: S2; goto Lnext
-Ldefault: Sd
-Lnext:
-```
-
-For dense case ranges, jump tables reduce comparisons.
-
-#### Boolean expression flow
-
-Boolean conditions are often compiled in short-circuit style:
-
-- `B1 && B2`: if `B1` false, skip `B2`.
-- `B1 || B2`: if `B1` true, skip `B2`.
-
-This reduces unnecessary evaluation and supports side-effect correctness.
-
----
-
-### 3) Translate `R = -(a+b)*(c+d)/(a+b+e*f)` into Quadruples, Triples, and Indirect Triples.
-
-#### Three-address sequence
-
-```text
-t1 = a + b
-t2 = uminus t1
-t3 = c + d
-t4 = t2 * t3
-t5 = e * f
-t6 = a + b
-t7 = t6 + t5
-t8 = t4 / t7
-R  = t8
-```
-
-#### Quadruples
-
-Format: `(op, arg1, arg2, result)`
-
-| No  | op     | arg1 | arg2 | result |
-| --- | ------ | ---- | ---- | ------ |
-| 1   | +      | a    | b    | t1     |
-| 2   | uminus | t1   | -    | t2     |
-| 3   | +      | c    | d    | t3     |
-| 4   | \*     | t2   | t3   | t4     |
-| 5   | \*     | e    | f    | t5     |
-| 6   | +      | a    | b    | t6     |
-| 7   | +      | t6   | t5   | t7     |
-| 8   | /      | t4   | t7   | t8     |
-| 9   | =      | t8   | -    | R      |
-
-#### Triples
-
-Format: `(op, arg1, arg2)` where arguments can be names or result positions.
-
-| Pos | op     | arg1 | arg2 |
-| --- | ------ | ---- | ---- |
-| 0   | +      | a    | b    |
-| 1   | uminus | (0)  | -    |
-| 2   | +      | c    | d    |
-| 3   | \*     | (1)  | (2)  |
-| 4   | \*     | e    | f    |
-| 5   | +      | a    | b    |
-| 6   | +      | (5)  | (4)  |
-| 7   | /      | (3)  | (6)  |
-| 8   | =      | (7)  | R    |
-
-#### Indirect triples
-
-Indirect triples use a pointer list to triples.
-
-Pointer table:
-
-| Index | Points to triple position |
-| ----- | ------------------------- |
-| p0    | 0                         |
-| p1    | 1                         |
-| p2    | 2                         |
-| p3    | 3                         |
-| p4    | 4                         |
-| p5    | 5                         |
-| p6    | 6                         |
-| p7    | 7                         |
-| p8    | 8                         |
-
-Benefit:
-
-- Reordering is done by changing pointer order, not triple contents.
-
----
-
-### 4) Write three-address code for:
-
-```text
-while (A < C and B > D)
-do
-  if A = 1 then
-     C = C + 1
-  else
-     while A <= D
-     do
-       A = A + B
-```
-
-A short-circuit and label-based TAC:
-
-```text
-L1: if A < C goto L2
-    goto Lend
-L2: if B > D goto L3
-    goto Lend
-L3: if A == 1 goto L4
-    goto L5
-L4: t1 = C + 1
-    C = t1
-    goto L1
-L5: if A <= D goto L6
-    goto L1
-L6: t2 = A + B
-    A = t2
-    goto L5
-Lend:
-```
-
-Notes:
-
-- `and` is handled by two tests in sequence.
-- Inner `while` is nested with labels `L5`, `L6`.
-
----
-
-### 5) List and explain variants of syntax tree.
-
-Common tree representations in intermediate form:
-
-#### (a) Parse tree (concrete syntax tree)
-
-- Contains all grammar symbols (terminals and non-terminals).
-- Captures full derivation details.
-- Used for syntax validation and teaching derivations.
-
-#### (b) Abstract syntax tree (AST)
-
-- Removes unnecessary grammar nodes.
-- Keeps essential language constructs/operators.
-- Compact and convenient for semantic analysis and code generation.
-
-Example:
-
-For `a + b * c`, AST root is `+`, with left `a`, right subtree `* (b,c)`.
-
-#### (c) Directed acyclic graph (DAG) for expressions
-
-- Similar to AST but shares common subexpressions.
-- Avoids repeated computation.
-
-For `(a+b) - (a+b)`, one node for `(a+b)` is shared by both uses.
-
-#### (d) Syntax-directed translation tree / annotated tree
-
-- Parse/AST nodes carry attributes and semantic info.
-- Useful to explain type checking, widths, offsets, and code templates.
-
-Comparison summary:
-
-- Parse tree: most detailed, largest.
-- AST: compact, compiler-friendly.
-- DAG: optimization-oriented.
-- Annotated tree: semantic-processing oriented.
-
----
-
-### 6) State how to represent intermediate code and explain implementation of three-address code with example.
-
-Intermediate code (IC) is machine-independent representation between front end and back end.
-
-#### Forms of IC representation
-
-- Postfix notation.
-- Syntax trees / AST / DAG.
-- Three-address code (most popular).
-
-#### Three-address code (TAC)
-
-TAC properties:
-
-- At most one operator on RHS.
-- Uses temporary names (`t1`, `t2`, ...).
-- Easy to optimize and translate to assembly.
-
-Typical TAC statements:
-
-- `x = y op z`
-- `x = op y`
-- `x = y`
-- `if x relop y goto L`
-- `goto L`
-- `param x`, `call p, n`, `return x`
-- `x = y[i]`, `x[i] = y`
-
-#### Implementing TAC in compiler
-
-Data structures:
-
-- Symbol table entries for identifiers and temporaries.
-- Instruction array/list.
-- `newtemp()` for new temporaries.
-- `emit(op, arg1, arg2, res)` for instruction generation.
-
-Pseudo-process for expression translation:
-
-1. Translate subexpressions recursively.
-2. Create temporary for each operator node.
-3. Emit instruction using children results.
-4. Return location name upward.
-
-Example: `x = (a-b) + (c*d)`
-
-```text
-t1 = a - b
-t2 = c * d
-t3 = t1 + t2
-x  = t3
-```
-
-Quadruple implementation:
-
-| op  | arg1 | arg2 | result |
-| --- | ---- | ---- | ------ |
-| -   | a    | b    | t1     |
-| \*  | c    | d    | t2     |
-| +   | t1   | t2   | t3     |
-| =   | t3   | -    | x      |
-
-Benefits:
-
-- Supports optimization (CSE, copy propagation, dead code elimination).
-- Easy mapping to target instructions.
-
----
-
-### 7) Explain backpatching with example for Boolean and flow-of-control statements.
-
-Backpatching is a code generation technique used when jump targets are not yet known.
-
-- Compiler emits incomplete jumps with blank labels.
-- Maintains lists of such jump positions.
-- Later fills target labels when destination becomes known.
-
-Key lists:
-
-- `truelist(B)`: jumps to execute when `B` is true.
-- `falselist(B)`: jumps to execute when `B` is false.
-- `nextlist(S)`: pending exits from statement `S`.
-
-Operations:
-
-- `makelist(i)`: create list with instruction `i`.
-- `merge(p1,p2)`: combine lists.
-- `backpatch(p, L)`: fill all instructions in list `p` with label `L`.
-
-Example Boolean: `B = x < y || a < b`
-
-Generated form (before patch):
-
-```text
-i1: if x < y goto _
-i2: goto _
-i3: if a < b goto _
-i4: goto _
-```
-
-- `truelist(B) = merge({i1}, {i3})`
-- `falselist(B) = {i4}` after patching `i2` to start of second operand.
-
-Example control statement:
-
-```text
-if (B) S1 else S2
-```
-
-Steps:
-
-1. Generate code for `B` with `truelist` and `falselist`.
-2. Backpatch `truelist(B)` to start label of `S1`.
-3. Backpatch `falselist(B)` to start label of `S2`.
-4. Merge `nextlist(S1)` and `nextlist(S2)` as `nextlist` of entire statement.
-
-Advantages:
-
-- Works in one pass with syntax-directed translation.
-- Clean handling of nested conditionals and loops.
-
----
-
-### 8) Explain intermediate code for procedures with an example.
-
-Procedure-related intermediate code must capture call/return behavior and parameter passing.
-
-Typical TAC operations:
-
-- `beginproc p`
-- `param x`
-- `call p, n`
-- `t = call p, n` (function return)
-- `return x`
-- `endproc`
-
-Also includes local variable management and temporaries.
-
-Example source:
-
-```text
-int sum(int a, int b) {
-  int c;
-  c = a + b;
-  return c;
-}
-
-x = sum(p, q);
-```
-
-Intermediate code:
-
-```text
-beginproc sum
-  t1 = a + b
-  c  = t1
-  return c
-endproc
-
-param p
-param q
-t2 = call sum, 2
-x  = t2
-```
-
-Important runtime aspects reflected by IC:
-
-- Argument passing order.
-- Return value transfer.
-- Control transfer to callee and back to caller.
-- Activation record setup/teardown in target code generation phase.
-
----
-
-## Unit 4
-
-### 1) Explain principal sources of optimization techniques in detail with example.
-
-Compiler optimization improves code quality without changing meaning.
-
-Principal sources:
-
-#### (a) Redundant computation elimination
-
-- Common Subexpression Elimination (CSE)
-- Example:
-
-```text
-x = a*b + c
-y = a*b + d
-```
-
-`a*b` computed once.
-
-#### (b) Compile-time evaluation
-
-- Constant folding: `3*4 -> 12`
-- Constant propagation: if `x=10`, replace uses with `10`.
-
-#### (c) Copy and algebraic simplification
-
-- Copy propagation: `x=y; z=x+1` -> `z=y+1`
-- Algebraic identities: `x+0 -> x`, `x*1 -> x`, `x*0 -> 0`.
-
-#### (d) Dead code elimination
-
-- Remove computations whose results are never used.
-
-#### (e) Code motion
-
-- Move loop-invariant computation outside loop.
-
-#### (f) Strength reduction
-
-- Replace costly operations with cheaper ones.
-- Example: multiplication by 2 replaced by addition or shift.
-
-#### (g) Induction variable optimization
-
-- Replace repeated expression by running updates.
-
-#### (h) Register optimization
-
-- Keep frequently used variables in registers.
-
-#### (i) Control-flow optimization
-
-- Remove unreachable blocks.
-- Simplify jumps (`goto L1; L1:` patterns).
-
-Overall effect:
-
-- Fewer instructions.
-- Reduced memory traffic.
-- Better runtime and code size.
-
----
-
-### 2) Define and explain basic blocks and flow graphs with an example.
-
-#### Basic block
-
-A basic block is a maximal sequence of consecutive statements with:
-
-- one entry point (first statement),
-- one exit point (last statement),
-- no branches except at end,
-- no branch targets except first statement.
-
-#### Leaders (to find blocks)
-
-A statement is a leader if:
-
-1. it is the first statement,
-2. it is the target of a jump,
-3. it follows a jump statement.
-
-#### Flow graph
-
-- Nodes: basic blocks.
-- Directed edge `B1 -> B2` if control may transfer from `B1` to `B2`.
-
-Example TAC:
-
-```text
-1: i = 1
-2: sum = 0
-3: if i > 10 goto 8
-4: sum = sum + i
-5: i = i + 1
-6: goto 3
-8: print sum
-```
-
-Basic blocks:
-
-- `B1`: (1,2)
-- `B2`: (3)
-- `B3`: (4,5,6)
-- `B4`: (8)
-
-Edges:
-
-- `B1 -> B2`
-- `B2 -> B3` (if condition false)
-- `B2 -> B4` (if true)
-- `B3 -> B2`
-
-Uses:
-
-- Foundation for local/global optimization.
-- Data-flow analysis and loop detection.
-
----
-
-### 3) Explain loop optimization techniques with example.
-
-Loops dominate runtime, so optimizing loops gives major gains.
-
-#### (a) Loop-invariant code motion
-
-If expression does not change across iterations, move it outside loop.
-
-```text
-for i=1..n:
-  t = a*b
-  x[i] = t + i
-```
-
-Move `t=a*b` before loop.
-
-#### (b) Strength reduction
-
-Replace expensive computation by incremental update.
-
-```text
-t = 4*i
-```
-
-Inside loop, maintain `t = t + 4`.
-
-#### (c) Induction variable elimination
-
-If one induction variable is derivable from another, remove extras.
-
-#### (d) Loop unrolling
-
-Replicate loop body to reduce branch overhead.
-
-- Improves ILP but may increase code size.
-
-#### (e) Loop fusion (jamming)
-
-Combine adjacent loops with same bounds.
-
-- Improves cache locality.
-
-#### (f) Loop fission (distribution)
-
-Split loop to isolate independent parts.
-
-- Can improve vectorization/cache behavior.
-
-#### (g) Loop interchange
-
-Swap nested loop order for better memory access pattern.
-
-#### (h) Loop unswitching
-
-Move invariant condition outside loop and duplicate loop body by branch.
-
-Benefits:
-
-- Lower per-iteration cost.
-- Better cache and register use.
-- Increased pipeline/vector performance.
-
----
-
-### 4) Explain various structure-preserving transformations with suitable example.
-
-Structure-preserving transformations improve code while preserving high-level control structure and readability of intermediate representation.
-
-Common transformations:
-
-#### (a) Common subexpression elimination
-
-```text
-t1 = a+b
-t2 = a+b
-```
-
-Second replaced by `t2 = t1`.
-
-#### (b) Copy propagation
-
-`x=y; z=x+1` -> `z=y+1`.
-
-#### (c) Dead code elimination
-
-Remove statements whose results are never used.
-
-#### (d) Constant folding/propagation
-
-`x=5; y=x+3` -> `y=8`.
-
-#### (e) Algebraic simplification
-
-`x=x+0`, `y=y*1`, `z=z-z -> 0`.
-
-#### (f) Reassociation and canonicalization
-
-Reorder associative operations to expose optimization opportunities.
-
-#### (g) Jump optimization
-
-- Eliminate jump-to-jump chains.
-- Remove unreachable labels/blocks.
-
-Example sequence:
-
-Before:
-
-```text
-x = a + b
-y = a + b
-z = y * 1
-if true goto L1
-goto L2
-L1: w = z + 0
-L2:
-```
-
-After:
-
-```text
-x = a + b
-y = x
-w = y
-```
-
-(unreachable and neutral operations removed)
-
----
-
-### 5) Explain construction of DAG for a basic block.
-
-DAG (Directed Acyclic Graph) represents value computation in a basic block and enables local optimization.
-
-Construction rules:
-
-1. Create leaves for unique identifiers/constants.
-2. For statement `x = y op z`:
-   - find/create node `op(y,z)`.
-   - attach `x` as label to that node.
-3. For copy `x=y`, attach label `x` to node of `y`.
-4. If `op(y,z)` already exists, reuse node (captures common subexpression).
-
-Example block:
-
-```text
-a = b + c
-d = b + c
-e = a - d
-```
-
-DAG:
-
-- one `+` node with children `b`,`c` labeled `{a,d}`
-- one `-` node with both operands pointing to same `+` node, labeled `{e}`
-
-Optimization insights:
-
-- `d = b + c` redundant.
-- Since `a` and `d` same value, `e = a-d` simplifies to `0`.
-
-Code regenerated from DAG is shorter and faster.
-
----
-
-### 6) Explain various structure-preserving transformations with suitable examples.
-
-(Repeated question; expanded answer format)
-
-Transformations preserving semantics and control structure:
-
-1. Local value numbering and CSE.
-2. Constant folding and constant propagation.
-3. Copy propagation.
-4. Dead assignment elimination.
-5. Algebraic simplification.
-6. Boolean simplification (`if (true)` / `if (false)`).
-7. Jump threading and unreachable code removal.
-
-Illustrative example:
-
-Before:
-
-```text
-t1 = a * 1
-t2 = b + c
-t3 = b + c
-x = t2 + 0
-y = t1 + x
-```
-
-After:
-
-```text
-t2 = b + c
-y = a + t2
-```
-
-Effects:
-
-- fewer instructions,
-- reduced temporaries,
-- same behavior.
-
----
-
-### 7) Explain Data Flow Analysis in detail.
-
-Data Flow Analysis (DFA) computes information about possible program states at each point in control flow graph.
-
-Components:
-
-- CFG with basic blocks.
-- Direction: forward or backward.
-- Domain: sets of facts (definitions, expressions, variables).
-- Transfer functions: how block transforms IN facts to OUT facts.
-- Meet operator: merge from multiple predecessors/successors.
-
-General framework:
-
-For forward analysis:
-
-```text
-IN[B]  = meet of OUT[pred(B)]
-OUT[B] = fB(IN[B])
-```
-
-For backward analysis:
-
-```text
-OUT[B] = meet of IN[succ(B)]
-IN[B]  = fB(OUT[B])
-```
-
-Iterate to fixed point.
-
-Major analyses:
-
-#### (a) Reaching definitions (forward, may)
-
-Definition `d` reaches point `p` if there is a path where `d` not killed.
-
-- Used in constant propagation and use-definition chains.
-
-#### (b) Live variable analysis (backward, may)
-
-Variable is live at point if its current value may be used later.
-
-- Used in register allocation.
-
-Equations:
-
-```text
-IN[B]  = USE[B] U (OUT[B] - DEF[B])
-OUT[B] = U IN[s], s in succ(B)
-```
-
-#### (c) Available expressions (forward, must)
-
-Expression available if already computed on all paths and operands unchanged.
-
-- Used in CSE.
-
-#### (d) Very busy expressions (backward, must)
-
-Expression definitely used before operand redefinition.
-
-- Supports code motion.
-
-Challenges:
-
-- Loops require iterative convergence.
-- Trade-off between precision and compile time.
-
----
-
-### 8) Explain loop optimizations for a flow graph and give optimized flow graph.
-
-Approach on any loop-containing CFG:
-
-1. Identify back edges using dominators.
-2. Form natural loops.
-3. Apply safe transformations.
-4. Rebuild optimized CFG.
-
-Typical transformations on loop CFG:
-
-- Move loop-invariant computations to preheader.
-- Eliminate redundant expressions in loop body.
-- Strength-reduce induction expressions.
-- Remove dead updates.
-- Simplify branches.
-
-Illustrative loop (original):
-
-```text
-B1: i=0; t=a*b
-B2: if i>=n goto B5
-B3: x[i]=a*b + i
-B4: i=i+1; goto B2
-B5: exit
-```
-
-Optimized:
-
-```text
-P : t=a*b         (preheader)
-B2: if i>=n goto B5
-B3: x[i]=t+i
-B4: i=i+1; goto B2
-B5: exit
-```
-
-Optimized flow graph:
-
-- New preheader `P` inserted before loop header.
-- Edge sequence: `P -> B2`, `B2 -> B3`, `B3 -> B4`, `B4 -> B2`, `B2 -> B5`.
-
-Advantages:
-
-- Reduced repeated computation.
-- Smaller loop body and better performance.
-
----
-
-## Unit 5
-
-### 1) Explain storage organization in brief by considering static vs dynamic storage allocation.
-
-Runtime memory is commonly organized into:
-
-- Code/Text segment
-- Static/Global data
-- Heap (dynamic objects)
-- Stack (procedure activations)
-
-#### Static storage allocation
-
-- Memory fixed at compile time.
-- Addresses do not change during execution.
-- Used for global variables, static locals, constants.
-
-Pros:
-
-- Very fast access.
-- No runtime allocation overhead.
-
-Cons:
-
-- Poor flexibility.
-- Cannot support recursion-dependent local instances dynamically.
-
-#### Dynamic storage allocation
-
-Allocated at runtime.
-
-Two forms:
-
-- Stack dynamic: activation records for procedure calls.
-- Heap dynamic: objects with arbitrary lifetime (`new`, `malloc`).
-
-Pros:
-
-- Supports recursion and dynamic data structures.
-- Better memory utilization for varying runtime needs.
-
-Cons:
-
-- Allocation/deallocation overhead.
-- Fragmentation and lifetime management complexity.
-
-Comparison summary:
-
-- Static: fixed lifetime and address.
-- Dynamic: runtime lifetime and often runtime address.
-
----
-
-### 2) Write in detail about activation records.
-
-Activation record (AR), or stack frame, stores information for one procedure invocation.
-
-Typical fields:
-
-1. Actual parameters / argument area
-2. Return value (if needed)
-3. Return address
-4. Control link (dynamic link to caller frame)
-5. Access link (static link for nested scope access)
-6. Saved machine registers
-7. Local variables
-8. Temporaries / spill area
-
-Lifecycle:
-
-- On call: new AR pushed, links set, control transfers to callee.
-- On return: result passed, previous environment restored, AR popped.
-
-Pointers:
-
-- `SP` (stack pointer): top of stack.
-- `FP`/`BP` (frame/base pointer): stable reference to current frame.
-
-Why AR is needed:
-
-- Handles recursion (multiple active calls).
-- Isolates local variables per call.
-- Supports parameter passing and return mechanism.
-
-Calling sequence (simplified):
-
-1. Caller evaluates arguments.
-2. Caller places arguments and call instruction.
-3. Callee prologue creates frame and saves state.
-4. Callee body executes.
-5. Callee epilogue restores state and returns.
-6. Caller resumes.
-
----
-
-### 3) Explain code generation algorithm in detail.
-
-Code generation maps intermediate representation to target machine code.
-
-Inputs:
-
-- IR (usually TAC/basic blocks),
-- symbol table,
-- target machine description (registers, instruction set).
-
-Goals:
-
-- Correctness,
-- efficiency (speed and size),
-- good register utilization.
-
-Basic algorithm (block-oriented):
-
-1. Partition IR into basic blocks.
-2. For each block, compute next-use/live information.
-3. For each TAC instruction:
-   - choose target instruction pattern,
-   - choose registers for operands/results,
-   - spill if registers unavailable,
-   - emit machine code.
-4. Emit block control transfers.
-5. Handle procedure prologue/epilogue.
-
-Register and address descriptors:
-
-- Register descriptor: which variable value is in each register.
-- Address descriptor: where current value of variable resides (register/memory).
-
-Heuristics:
-
-- Keep frequently used live values in registers.
-- Prefer instruction forms matching machine addressing modes.
-- Delay stores to memory when safe.
-
-Example TAC:
-
-```text
-t1 = a + b
-c  = t1 * d
-```
-
-Possible target-like sequence:
-
-```text
-LOAD R1, a
-ADD  R1, b
-MUL  R1, d
-STORE c, R1
-```
-
-Quality improvements:
-
-- Instruction selection via tree-pattern matching.
-- Better register allocation (graph coloring/linear scan).
-- Peephole optimization after emission.
-
----
-
-### 4) Explain various forms of object code.
-
-Object code is machine-level output produced by compiler/assembler before or after linking.
-
-Forms:
-
-#### (a) Absolute machine code
-
-- Contains final physical addresses.
-- Load at fixed location only.
-- Rare in modern systems.
-
-#### (b) Relocatable object code
-
-- Addresses are relative.
-- Linker/loader adjusts addresses during linking/loading.
-- Most common form (`.o`, `.obj`).
-
-Contains:
-
-- text and data sections,
-- symbol table,
-- relocation information,
-- external references.
-
-#### (c) Assembly code (symbolic object form)
-
-- Human-readable low-level form.
-- Requires assembler to convert to machine code.
-
-#### (d) Shared object / dynamic library code
-
-- Position-independent code for runtime linking.
-- Enables library reuse and memory sharing.
-
-Pipeline context:
-
-```text
-Source -> Compiler -> Assembly/Object -> Linker -> Executable -> Loader
+## UNIT III
+
+### 1) Explain the Software Architecture from the management perspective.
+
+From a management perspective, software architecture is not only a technical design but also a **project control mechanism**. It aligns business goals, risk, scope, schedule, and team coordination.
+
+1. **Architecture as design concept (intangible):**
+   It defines infrastructure, control, and data interfaces so components and teams can collaborate.
+2. **Architecture baseline (tangible):**
+   It is the cross-section of artifacts proving that the product vision is feasible within cost, time, people, and technology constraints.
+3. **Architecture description (human-readable):**
+   Organized views that communicate architecture clearly to all stakeholders.
+4. **Project milestone significance:**
+   A stable architecture marks a major decision point (make/buy, risk containment, planning confidence).
+5. **Trade-off platform:**
+   It balances problem space (requirements/constraints) and solution space (design/implementation).
+6. **Coordination role:**
+   It structures communication among developers, architects, managers, users, and external stakeholders.
+7. **Risk and predictability:**
+   Mature process + demonstrable architecture + requirement understanding are prerequisites for predictable planning.
+8. **Failure prevention:**
+   Poor architecture and immature process are common root causes of project failure.
+9. **Scope for automation:**
+   Creative architecture definition cannot be fully automated; it needs engineering judgment.
+10. **Management outcome:**
+    Better control over schedule, quality, and technical risk through architecture-centered governance.
+
+```mermaid
+flowchart LR
+    A[Business Case<br/>Cost Time Profit People] --> B[Architecture Baseline]
+    C[Requirements & Constraints] --> B
+    D[Design & Implementation Options] --> B
+    B --> E[Stakeholder Confidence]
+    E --> F[Stable Milestone]
+    F --> G[Predictable Plan and Controlled Risk]
 ```
 
 ---
 
-### 5) Explain various runtime storage allocation strategies.
+### 2) What is a workflow? Explain in detail the process workflows.
 
-Main strategies:
+A **workflow** is a cohesive, mostly sequential thread of activities mapped to product artifacts. In software process management, top-level workflows ensure every lifecycle concern is addressed continuously.
 
-#### (a) Static allocation
+**Seven top-level process workflows:**
 
-- Compile-time assignment.
-- Fixed addresses for entire execution.
-- Suitable for globals, fixed-size data.
+1. **Management workflow:** planning, monitoring, risk control, stakeholder win conditions.
+2. **Environment workflow:** process automation, toolchain maintenance, reusable infrastructure.
+3. **Requirements workflow:** problem analysis, use-case evolution, requirements artifact refinement.
+4. **Design workflow:** architecture/design modeling and technical decision making.
+5. **Implementation workflow:** coding, integration, component realization.
+6. **Assessment workflow:** quality measurement, defect/metric trend analysis, compliance checks.
+7. **Deployment workflow:** transition to user/site/support organization.
 
-#### (b) Stack allocation
+**Lifecycle emphasis changes by phase:**
 
-- LIFO strategy aligned with call/return nesting.
-- Each call pushes activation record; return pops it.
-- Efficient and simple.
+- Inception/Elaboration: management, requirements, architecture-heavy.
+- Construction: design, implementation, assessment-heavy.
+- Transition: assessment and deployment-heavy.
 
-Best for:
+This phased variation ensures effort is not uniformly distributed but optimized by project maturity.
 
-- local variables with lexical lifetime.
-- recursion support.
-
-Limitation:
-
-- Not suitable for data surviving after function returns.
-
-#### (c) Heap allocation
-
-- Arbitrary allocation/deallocation order.
-- Supports dynamic structures: linked lists, trees, graphs, objects.
-
-Memory management methods:
-
-- Explicit deallocation (`free/delete`).
-- Garbage collection.
-
-Issues:
-
-- Fragmentation,
-- allocation overhead,
-- leaks/dangling pointers (manual management).
-
-Practical systems use a combination:
-
-- globals in static,
-- procedure locals in stack,
-- dynamic objects in heap.
-
----
-
-### 6) Explain procedure calls and displays in brief.
-
-Procedure call implementation requires passing control, data, and environment.
-
-Call essentials:
-
-- argument passing,
-- return address handling,
-- activation record creation,
-- restoration on return.
-
-#### Parameter passing modes
-
-- Call by value.
-- Call by reference.
-- Call by value-result (copy-in/copy-out).
-- Call by name (historical).
-
-#### Accessing non-local variables
-
-In nested procedures, non-local variables need static-scope access.
-
-Two techniques:
-
-1. Static links (access links)
-
-- Each frame points to frame of lexical parent.
-- Non-local access follows link chain.
-
-2. Displays
-
-- Display is an array where entry `k` points to most recent frame at nesting level `k`.
-- Non-local access becomes direct indexed lookup (faster than long chain traversal).
-
-Display advantages:
-
-- Faster access for deeply nested scopes.
-
-Display cost:
-
-- Must save/restore display entries on call/return.
-
----
-
-### 7) Explain the concept of register allocation and assignments.
-
-Register allocation decides which variables reside in limited CPU registers at each point.
-
-Register assignment maps allocated variables to specific registers.
-
-Why important:
-
-- Register access is much faster than memory.
-- Good allocation strongly affects performance.
-
-#### Core ideas
-
-- Live range: program region where value may be used.
-- Interference: two live ranges overlap, cannot share register.
-- Spill: store value to memory when registers insufficient.
-
-#### Techniques
-
-1. Graph coloring allocation
-
-- Build interference graph.
-- Color with `k` colors (registers).
-- Uncolorable nodes are spilled.
-
-2. Linear scan allocation
-
-- Sort intervals by start point.
-- Allocate quickly with active set.
-- Popular in JIT compilers.
-
-#### Register assignment heuristics
-
-- Prefer frequently used variables.
-- Prefer values live across many instructions.
-- Avoid unnecessary load/store by keeping operands in same register when possible.
-
-Example:
-
-```text
-t1 = a+b
-t2 = t1+c
+```mermaid
+flowchart TB
+    I[Inception] --> E[Elaboration] --> C[Construction] --> T[Transition]
+    subgraph Workflows
+      M[Management]
+      EN[Environment]
+      R[Requirements]
+      D[Design]
+      IM[Implementation]
+      A[Assessment]
+      DP[Deployment]
+    end
+    I -.High.-> M
+    E -.High.-> R
+    E -.High.-> D
+    C -.High.-> IM
+    C -.High.-> A
+    T -.High.-> DP
+    T -.High.-> A
 ```
 
-If `t1` remains in same register, second instruction avoids reload.
+---
+
+### 3) State the heuristics that describe objectively an architecture baseline.
+
+An architecture baseline is considered objective when it is **demonstrable, traceable, measurable, and stakeholder-acceptable**. Practical heuristics are:
+
+1. **Critical use-case coverage exists** and is testable.
+2. **Quality objectives are explicit** (performance, reliability, maintainability, etc.).
+3. **Architecturally significant classes/components are identified** with clear interfaces.
+4. **Concurrency and control strategy is defined** (process/thread relationships).
+5. **Implementation inventory exists** (bill of materials of major components).
+6. **Executable subset is available** proving key scenarios.
+7. **Deployment mapping is explicit** from logical software to physical resources.
+8. **Key technical risks are retired or bounded** through prototypes/tests.
+9. **Requirements-priority to architecture traceability** is present.
+10. **Configuration control is established** for baseline artifacts.
+11. **Stakeholder review acceptance** is obtained for milestone readiness.
+12. **Business-case alignment** remains valid (cost/schedule feasibility not violated).
+
+These heuristics are used to determine whether architecture is ready to support construction planning with confidence.
+
+```mermaid
+mindmap
+  root((Architecture Baseline Heuristics))
+    Requirements
+      Critical use cases
+      Quality objectives
+      Priority traceability
+    Design
+      Significant components
+      Defined interfaces
+      Concurrency model
+    Implementation
+      BOM inventory
+      Executable subset
+    Deployment
+      Logical-to-physical mapping
+    Governance
+      Risk retired
+      Config control
+      Stakeholder approval
+```
 
 ---
 
-### 8) Give various issues in the design of code generator.
+### 4) What is a milestone? Explain Major and Minor Milestones with respect to the software process.
 
-Major design issues:
+A **milestone** is a formally recognized checkpoint used to evaluate progress, quality, and readiness to proceed.
 
-1. Input representation
+## Major milestones (phase-end, system-wide)
 
-- Quality and structure of IR (three-address code, SSA, trees).
+1. **Life-Cycle Objectives (end of Inception):** validates scope, business case, feasibility, cost/schedule estimates.
+2. **Life-Cycle Architecture (end of Elaboration):** validates executable architecture and risk retirement.
+3. **Initial Operational Capability (late Construction):** evaluates readiness for transition/acceptance testing.
+4. **Product Release (end of Transition):** confirms product completion and handover/support readiness.
 
-2. Target machine characteristics
+**Purpose:** synchronize engineering and management views; secure stakeholder authorization for next phase.
 
-- Register count,
-- instruction formats,
-- addressing modes,
-- condition code behavior.
+## Minor milestones (iteration-level)
 
-3. Instruction selection
+1. **Iteration Readiness Review (start):** confirms plan, iteration goals, and evaluation criteria.
+2. **Iteration Assessment Review (end):** checks objective achievement, test outcomes, rework needs, and next iteration impact.
 
-- Choosing efficient machine instruction sequence.
+**Purpose:** maintain short-cycle control and enable iterative corrections.
 
-4. Register allocation and spilling
+## Status assessments
 
-- Balancing performance vs spill overhead.
+Periodic (monthly/quarterly) management snapshots track trend health in progress, quality, risks, and issues.
 
-5. Order of evaluation
-
-- Minimize register pressure and memory traffic.
-
-6. Memory management and data layout
-
-- Stack frame layout,
-- global/local addressing,
-- alignment.
-
-7. Control flow and branch generation
-
-- Efficient jumps, fall-through usage, branch prediction friendliness.
-
-8. Procedure call conventions
-
-- Caller/callee saved registers,
-- parameter passing,
-- return value handling.
-
-9. Code quality trade-offs
-
-- Compile-time vs runtime performance,
-- speed vs size optimization.
-
-10. Machine-dependent optimizations
-
-- Peephole optimization,
-- scheduling,
-- exploiting special instructions.
-
-11. Correctness and portability
-
-- Preserve semantics under all optimizations.
-- Handle edge cases (overflow, exceptions, aliasing assumptions).
-
-A robust code generator balances correctness first, then performance and size under machine constraints.
+```mermaid
+flowchart LR
+    A[Inception] --> B[Elaboration] --> C[Construction] --> D[Transition]
+    A --> A1[LCO Major Milestone]
+    B --> B1[LCA Major Milestone]
+    C --> C1[IOC Major Milestone]
+    D --> D1[Product Release Milestone]
+    I1[Iteration Readiness Review] --> I2[Iteration Assessment Review]
+    S[Periodic Status Assessments] -.throughout.-> A
+    S -.throughout.-> B
+    S -.throughout.-> C
+    S -.throughout.-> D
+```
 
 ---
 
-## Quick Exam Writing Tips (for 10 marks)
+### 5) Elaborate on the Iteration Planning Process with a neat diagram.
 
-1. Start with a formal definition in 2-3 lines.
-2. Draw or describe one clear example.
-3. Add algorithm/steps where applicable.
-4. Mention advantages, limitations, and use-cases.
-5. End with a concise summary line.
+Iteration planning converts lifecycle intent into executable short-term commitments.
 
-This structure generally helps secure full or near-full marks.
+1. **Start from baseline inputs:** current plan, architecture baseline, requirements baseline, open change items.
+2. **Select iteration scope:** allocate usage scenarios/use cases for this iteration.
+3. **Define evaluation criteria:** measurable acceptance conditions for iteration closure.
+4. **Decompose into tasks/work packages:** management, requirements, design, implementation, assessment, deployment activities.
+5. **Estimate effort and schedule:** task durations, resource loading, dependencies.
+6. **Assign ownership:** role-based and skill-based responsibility allocation.
+7. **Risk-first ordering:** prioritize high-risk/high-payoff items early.
+8. **Integrate with change management:** baseline updates and software change order alignment.
+9. **Plan integration/test strategy:** early and continuous integration checkpoints.
+10. **Readiness review:** approve iteration plan and authorize execution.
+11. **Execute and monitor:** track metrics and issue trends.
+12. **Assessment review:** capture outcomes and feed next iteration plan.
+
+```mermaid
+flowchart TD
+    A[Baseline Inputs<br/>Plan Architecture Requirements SCOs] --> B[Select Iteration Scope]
+    B --> C[Define Evaluation Criteria]
+    C --> D[Task Decomposition and WBS Mapping]
+    D --> E[Estimate Effort and Schedule]
+    E --> F[Assign Owners and Resources]
+    F --> G[Risk Prioritization and Integration Plan]
+    G --> H[Iteration Readiness Review]
+    H --> I[Execute Iteration]
+    I --> J[Iteration Assessment Review]
+    J --> K[Rework and Lessons Learned]
+    K --> L[Next Iteration Planning]
+```
+
+---
+
+### 6) Define iteration. Discuss the sequence of activities in an iteration workflow.
+
+An **iteration** is a time-boxed development cycle that produces an intermediate, demonstrable result and updates the evolving baseline.
+
+**Typical sequence of iteration workflow activities:**
+
+1. **Management:** plan iteration content and assign tasks.
+2. **Environment:** update change-order/baseline environment artifacts.
+3. **Requirements:** elaborate allocated use cases and update requirement artifacts.
+4. **Design:** evolve architecture and design model for allocated criteria.
+5. **Implementation:** build/acquire/modify components; integrate with existing baselines.
+6. **Assessment:** evaluate compliance with criteria and product/process quality.
+7. **Deployment:** release to user/external stakeholder or close internally with post-mortem.
+
+**Phase-wise emphasis:**
+
+- Early iterations: management + requirements + design.
+- Mid lifecycle: design + implementation + assessment.
+- Late lifecycle: assessment + deployment.
+
+```mermaid
+sequenceDiagram
+    participant M as Management
+    participant E as Environment
+    participant R as Requirements
+    participant D as Design
+    participant I as Implementation
+    participant A as Assessment
+    participant P as Deployment
+
+    M->>E: Approve iteration plan and tasks
+    E->>R: Baseline and change data ready
+    R->>D: Elaborated use cases and criteria
+    D->>I: Updated design model and interfaces
+    I->>A: Integrated build and test results
+    A->>P: Quality and objective compliance status
+    P->>M: Release outcome and lessons learned
+```
+
+---
+
+## UNIT IV
+
+### 7) Explain the roles and responsibilities of the default line-of-business organization.
+
+A software line-of-business (LoB) organization provides common process capability across projects.
+
+**Core roles and responsibilities:**
+
+1. **SEPA (Software Engineering Process Authority):**
+   Maintains process maturity roadmap, guides process usage, and institutionalizes best practices.
+2. **PRA (Project Review Authority):**
+   Ensures projects comply with organizational policies, standards, and contractual expectations.
+3. **SEEA (Software Engineering Environment Authority):**
+   Automates process, maintains standard environments, trains projects, and sustains reusable assets.
+4. **Infrastructure function:**
+   Provides organization-wide support assets (HR, R&D support, reusable engineering capability).
+5. **Process definition and maintenance ownership:**
+   Centralized and coherent across LoB.
+6. **Process automation as first-class role:**
+   Equal in importance to process definition.
+7. **Support for project reuse and consistency:**
+   Enables economies of scale and ROI.
+8. **Cross-project governance:**
+   Enforces common lifecycle checkpoints, metrics, and compliance mechanisms.
+
+```mermaid
+flowchart TB
+    GM[General Management]
+    GM --> SEPA[SEPA<br/>Process Definition and Improvement]
+    GM --> PRA[PRA<br/>Project Compliance and Reviews]
+    GM --> SEEA[SEEA<br/>Automation and Standard Environment]
+    SEPA --> PROJ[Projects]
+    PRA --> PROJ
+    SEEA --> PROJ
+    INFRA[Infrastructure Assets] --> PROJ
+```
+
+---
+
+### 8) What is Automation? Explain the building blocks for process automation.
+
+In SPM context, **automation** is the systematic use of integrated tools and environments to execute process activities with speed, consistency, traceability, and lower cost of change.
+
+**Why automation is essential:**
+
+1. Iterative development requires frequent change.
+2. Manual change handling increases resistance and defects.
+3. Metrics automation improves project control.
+4. Round-trip engineering needs consistent artifact synchronization.
+
+**Three automation levels:**
+
+1. **Metaprocess (LoB):** infrastructure-level automation.
+2. **Macroprocess (Project):** project environment automation.
+3. **Microprocess (Iteration):** tool-level automation.
+
+**Workflow-wise building blocks:**
+
+1. Management: workflow and metrics automation.
+2. Environment: change and document automation.
+3. Requirements: requirements management tools.
+4. Design: visual modeling tools.
+5. Implementation: editor/compiler/debugger/linker/runtime.
+6. Assessment: test automation and defect tracking.
+7. Deployment: release/deployment and defect-tracking support.
+
+```mermaid
+flowchart TD
+    A[Process Automation]
+    A --> L1[Metaprocess: Infrastructure]
+    A --> L2[Macroprocess: Project Environment]
+    A --> L3[Microprocess: Iteration Tools]
+
+    L3 --> M[Management Tools]
+    L3 --> R[Requirements Tools]
+    L3 --> D[Design Tools]
+    L3 --> I[Implementation Tools]
+    L3 --> Q[Assessment Tools]
+    L3 --> DP[Deployment Tools]
+```
+
+---
+
+### 9) Illustrate the software project team evolution over the life cycle.
+
+Project teams evolve phase-wise; emphasis shifts across management, architecture, development, and assessment.
+
+**Typical evolution profile:**
+
+1. **Inception:**
+   Management dominant (vision, business case, planning).
+2. **Elaboration:**
+   Architecture dominant (risk retirement, executable architecture).
+3. **Construction:**
+   Development dominant (component realization and integration).
+4. **Transition:**
+   Assessment dominant (quality validation, deployment readiness, acceptance focus).
+
+**Illustrative allocation from the material:**
+
+- Inception: Mgmt 50%, Arch 20%, Dev 20%, Assess 10%
+- Elaboration: Mgmt 10%, Arch 50%, Dev 20%, Assess 20%
+- Construction: Mgmt 10%, Arch 10%, Dev 50%, Assess 30%
+- Transition: Mgmt 10%, Arch 5%, Dev 35%, Assess 50%
+
+This dynamic allocation improves resource efficiency and avoids misaligned staffing.
+
+```mermaid
+flowchart LR
+   I[Inception\nMgmt 50 Arch 20 Dev 20 Assess 10] --> E[Elaboration\nMgmt 10 Arch 50 Dev 20 Assess 20]
+   E --> C[Construction\nMgmt 10 Arch 10 Dev 50 Assess 30]
+   C --> T[Transition\nMgmt 10 Arch 5 Dev 35 Assess 50]
+```
+
+---
+
+### 10) Explain about the four Quality indicators used in the software process.
+
+Quality control in iterative SPM is tracked through practical indicators that expose product and process health.
+
+**Four important quality indicators:**
+
+1. **Defect Trend Indicator**
+   - Tracks defect arrival, closure, leakage, severity mix.
+   - Indicates whether quality is improving per iteration.
+
+2. **Requirements Compliance Indicator**
+   - Measures fulfillment of allocated use cases and acceptance criteria.
+   - Ensures delivered functionality matches stakeholder intent.
+
+3. **Baseline Stability / Change Indicator**
+   - Uses change-order volume, rework load, and configuration churn.
+   - High churn late in lifecycle signals instability and risk.
+
+4. **Test and Assessment Effectiveness Indicator**
+   - Coverage, pass rate, regression success, escaped defects.
+   - Reflects trustworthiness of verification process.
+
+**Use in management:**
+
+- Combined analysis enables go/no-go decisions at iteration and phase checkpoints.
+- Quality ownership is distributed across teams, but indicators provide shared objective evidence.
+
+```mermaid
+flowchart LR
+    D[Defect Trend] --> Q[Overall Quality Health]
+    R[Requirements Compliance] --> Q
+    B[Baseline Stability] --> Q
+    T[Test Effectiveness] --> Q
+    Q --> DEC[Milestone Decision]
+```
+
+---
+
+### 11) Explain in detail the default project organization and responsibilities.
+
+The default project organization separates concerns while preserving collaboration.
+
+**Main organizational groups and responsibilities:**
+
+1. **Software Management Team**
+   - Business case, software development plan, status assessments.
+   - Planning, monitoring, risk management, customer/PRA interface.
+
+2. **Software Architecture Team**
+   - Owns architecture artifacts and integration direction.
+   - Handles global design decisions and architectural integrity.
+
+3. **Software Development Team**
+   - Component construction, integration contributions, maintenance.
+
+4. **Software Assessment Team**
+   - Independent evaluation, testing, quality trend reporting.
+
+5. **Administration / Supporting functions**
+   - Process support, repository governance, coordination services.
+
+**Key principles:**
+
+1. PM team is an active producer, not just supervisor.
+2. Architecture team owns real deliverables, not advisory-only role.
+3. Assessment remains organizationally separate from development.
+4. Quality is everyone’s responsibility at all checkpoints.
+5. Each team contributes a different quality perspective.
+
+```mermaid
+flowchart TB
+    PM[Software Management]
+    AR[Software Architecture]
+    DEV[Software Development]
+    QA[Software Assessment]
+    AD[Administration]
+
+    PM --> AR
+    PM --> DEV
+    PM --> QA
+    AD --> PM
+    AR --> DEV
+    DEV --> QA
+    QA --> PM
+```
+
+---
+
+### 12) Give the Seven Core metrics that are used in managing the software process.
+
+Seven core metrics commonly used to manage iterative software process are:
+
+1. **Progress / Schedule variance**
+   - Planned vs actual completion trend.
+2. **Effort / Cost variance**
+   - Budgeted vs consumed effort/cost.
+3. **Product size / growth**
+   - Use-case count, feature points, code growth trend.
+4. **Change traffic and breakage**
+   - Number/type of SCOs, churn rate, rework intensity.
+5. **Defect metrics**
+   - Open/closed defects, defect density, severity trend.
+6. **Test effectiveness metrics**
+   - Coverage, pass rates, regression stability.
+7. **Milestone/quality readiness metrics**
+   - Degree of objective satisfaction for iteration/phase exit.
+
+**Why these seven matter:**
+
+- Together they connect scope, time, cost, quality, and risk.
+- They support proactive correction, not post-failure reporting.
+- They provide objective evidence for status assessments and milestone reviews.
+
+```mermaid
+mindmap
+  root((Core Software Process Metrics))
+    Schedule Progress
+    Effort Cost
+    Product Size Growth
+    Change Traffic
+    Defect Trends
+    Test Effectiveness
+    Milestone Readiness
+```
+
+---
+
+### 13) What is round trip engineering? Explain.
+
+**Round-trip engineering** is integrated environment support that keeps different engineering artifacts consistent and traceable through continuous bidirectional updates.
+
+1. In iterative development, artifacts evolve rapidly (requirements, design, code, tests).
+2. Manual synchronization causes mismatch and errors.
+3. Round-trip support propagates controlled changes across artifacts.
+4. It increases change freedom while preserving baseline integrity.
+5. It works with change management (SCOs), configuration baselines, and CCB decisions.
+6. It reduces transition overhead from one artifact set to another.
+7. It improves accuracy of metrics and reporting because data remains aligned.
+8. It is essential in modern tool-integrated project environments.
+
+**Associated disciplines:**
+
+- Change management automation
+- Configuration management and baselines
+- Organization/project/stakeholder environment integration
+
+```mermaid
+flowchart LR
+    REQ[Requirements] <--> DES[Design Models]
+    DES <--> CODE[Source Code]
+    CODE <--> TEST[Test Artifacts]
+    TEST <--> REL[Release Baseline]
+    SCO[SCO and Change Management] --> REQ
+    SCO --> DES
+    SCO --> CODE
+    SCO --> TEST
+```
+
+---
+
+## UNIT V
+
+### 14) What is Agile methodology? Explain the properties of Agile methodology.
+
+Agile methodology is an **iterative and incremental** development approach delivering working software in short cycles (typically 1-4 weeks), with continuous customer feedback.
+
+**Core properties:**
+
+1. **Short iterations:** rapid increments and frequent value delivery.
+2. **Adaptability:** welcomes requirement changes based on business evolution.
+3. **Customer-centricity:** frequent interaction and feedback loop.
+4. **Incremental delivery:** workable product at each iteration.
+5. **Cross-functional teamwork:** collaborative team structure.
+6. **Role clarity:** Scrum Master (facilitation), Product Owner (value/priorities), team (execution).
+7. **Inspect and adapt:** demos, reviews, retrospectives.
+8. **Empirical control:** decisions based on observed outcomes and metrics.
+9. **Continuous improvement:** iterative process refinement.
+10. **Reduced delivery risk:** smaller batches reduce release uncertainty.
+
+Compared to single-phase long-cycle models, Agile improves responsiveness and delivery cadence.
+
+```mermaid
+flowchart LR
+    A[Prioritized Backlog] --> B[Sprint 1-4 weeks]
+    B --> C[Working Increment]
+    C --> D[Customer Feedback]
+    D --> E[Backlog Refinement]
+    E --> B
+```
+
+---
+
+### 15) What is DevOps? Explain the DevOps delivery pipelining.
+
+DevOps is a collaborative culture and engineering practice that unifies development and operations to deliver software faster, more reliably, and with continuous feedback.
+
+## DevOps delivery pipeline
+
+A DevOps pipeline is an automated flow from code commit to production operation.
+
+1. **Source control:** versioned change management.
+2. **Build/CI:** automatic build and integration checks.
+3. **Automated testing:** functional, regression, quality gates.
+4. **Deployment automation:** promote build across environments.
+5. **Containerization:** consistency across dev/test/prod.
+6. **Configuration management:** repeatable environment setup.
+7. **Monitoring/logging:** health and performance visibility.
+8. **Feedback loops:** production insights feed planning and coding.
+9. **Manual gates (where needed):** controlled approvals for high-risk steps.
+
+**Outcome:** faster time-to-market, reduced failure risk, improved quality.
+
+```mermaid
+flowchart LR
+    SC[Source Control] --> CI[Build and CI]
+    CI --> T[Automated Tests]
+    T --> PKG[Package or Containerize]
+    PKG --> DEP[Automated Deploy]
+    DEP --> MON[Monitor and Log]
+    MON --> FB[Feedback]
+    FB --> PLAN[Plan and Prioritize]
+    PLAN --> SC
+```
+
+---
+
+### 16) What is SCRUM model? Focus on its cycles.
+
+Scrum is an Agile framework for incremental product development through time-boxed sprints and empirical process control.
+
+## Scrum cycles
+
+1. **Product Backlog Creation:** Product Owner prioritizes value-focused items.
+2. **Sprint Planning:** team selects sprint scope and defines sprint goal.
+3. **Sprint Execution (1-4 weeks):** build/test/integrate sprint backlog.
+4. **Daily Scrum:** short synchronization for progress, blockers, next actions.
+5. **Sprint Review:** demonstrate increment and gather stakeholder feedback.
+6. **Sprint Retrospective:** inspect team process and define improvements.
+7. **Backlog Refinement:** update priorities and prepare next sprint.
+
+**Roles in the cycle:**
+
+- Product Owner: value/prioritization and acceptance.
+- Scrum Master: facilitation and impediment removal.
+- Cross-functional Team: delivery ownership.
+
+```mermaid
+flowchart TD
+    PB[Product Backlog] --> SP[Sprint Planning]
+    SP --> SX[Sprint Execution]
+    SX --> DS[Daily Scrum]
+    DS --> SX
+    SX --> SR[Sprint Review]
+    SR --> RET[Sprint Retrospective]
+    RET --> BR[Backlog Refinement]
+    BR --> PB
+```
+
+---
+
+### 17) Explain the tools that support implementation of DevOps.
+
+DevOps implementation requires an integrated toolchain spanning the full lifecycle.
+
+1. **Version Control (Git, Subversion):** source history, branching, collaboration.
+2. **CI/CD tools (Jenkins, GitLab CI, Travis CI, TeamCity, Bamboo):** build-test-deploy automation.
+3. **Container and orchestration (Docker, Kubernetes):** portability and scalable runtime.
+4. **Configuration management (Ansible, Puppet, Chef):** infra consistency and reproducibility.
+5. **Infrastructure as Code (Terraform, CloudFormation):** programmable environments.
+6. **Monitoring/logging (Splunk, Nagios, ELK):** observability and incident response.
+7. **Quality/security tools (SonarQube, DevSecOps tools):** code quality and secure delivery.
+8. **Planning/collaboration tools (Jira, Trello):** workflow visibility and coordination.
+
+**Tool selection principles:**
+
+- Integration compatibility
+- Automation depth
+- Scalability
+- Team skill fit
+- Business alignment and governance needs
+
+```mermaid
+flowchart LR
+    VCS[VCS] --> CICD[CI/CD]
+    CICD --> CT[Container Build]
+    CT --> ORCH[Orchestration]
+    ORCH --> MON[Monitoring and Logging]
+    IaC[Infrastructure as Code] --> ORCH
+    CM[Config Management] --> ORCH
+    SEC[Quality and Security] --> CICD
+    PLAN[Planning Tools] --> VCS
+```
+
+---
+
+### 18) Give the significance of various components of DevOps ecosystem.
+
+The DevOps ecosystem is a connected set of practices/tools that enables end-to-end software delivery excellence.
+
+**Significance of key components:**
+
+1. **VCS:** single source of truth for code evolution and collaboration.
+2. **CI/CD:** reduces integration risk and accelerates release frequency.
+3. **Configuration Management:** stable and repeatable environments.
+4. **Containerization:** environment consistency and deployment portability.
+5. **Monitoring and Logging:** operational visibility and faster recovery.
+6. **Collaboration/Planning platforms:** shared priorities and transparent execution.
+7. **IaC:** rapid, auditable, scalable infrastructure provisioning.
+8. **DevSecOps:** integrates security early, reducing late-stage vulnerabilities.
+
+**Overall significance:**
+
+- Converts SDLC into continuous flow.
+- Improves quality, speed, reliability, and governance.
+- Aligns technical delivery with business outcomes.
+
+```mermaid
+flowchart TB
+    E[DevOps Ecosystem]
+    E --> V[VCS]
+    E --> C[CI/CD]
+    E --> G[Config Management]
+    E --> K[Containerization]
+    E --> M[Monitoring and Logging]
+    E --> P[Planning and Collaboration]
+    E --> I[IaC]
+    E --> S[DevSecOps]
+    V --> C --> K --> M
+    I --> K
+    G --> K
+```
+
+---
+
+### 19) Mention some of the core benefits of DevOps.
+
+Core DevOps benefits include:
+
+1. **Faster time-to-market** through automation and continuous delivery.
+2. **Improved collaboration** between development and operations.
+3. **Higher delivery efficiency** by removing repetitive manual tasks.
+4. **Better software quality** with frequent integration and testing.
+5. **Better resource utilization** via cloud and programmable infrastructure.
+6. **Higher customer satisfaction** due to frequent reliable updates.
+7. **Lower release risk** through smaller and more frequent changes.
+8. **Continuous improvement culture** enabled by fast feedback loops.
+9. **Reduced defect and regression overhead** in mature pipelines.
+10. **Operational stability** from monitoring, logging, and controlled releases.
+
+These benefits are cumulative; strongest gains appear when culture, process, and tools are transformed together.
+
+```mermaid
+flowchart LR
+    A[Automation] --> B[Faster Delivery]
+    C[Collaboration] --> D[Better Flow]
+    E[CI/CD + Testing] --> F[Higher Quality]
+    G[Monitoring + Feedback] --> H[Continuous Improvement]
+    B --> I[Customer Value]
+    D --> I
+    F --> I
+    H --> I
+```
+
+---
+
+### 20) Explain the difference between the traditional Waterfall model and the Agile model.
+
+Waterfall and Agile differ fundamentally in planning style, delivery cadence, and change handling.
+
+1. **Lifecycle structure**
+   - Waterfall: linear, phase-by-phase.
+   - Agile: iterative and incremental.
+
+2. **Requirements handling**
+   - Waterfall: mostly fixed early.
+   - Agile: evolving via continuous feedback.
+
+3. **Delivery pattern**
+   - Waterfall: usually one major release.
+   - Agile: frequent working increments (1-4 week cycles).
+
+4. **Risk management**
+   - Waterfall: risk may surface late.
+   - Agile: early and repeated risk exposure/reduction.
+
+5. **Customer involvement**
+   - Waterfall: limited at phase boundaries.
+   - Agile: continuous collaboration.
+
+6. **Testing approach**
+   - Waterfall: heavy testing near end.
+   - Agile: continuous testing each iteration.
+
+7. **Team mode**
+   - Waterfall: function-siloed roles.
+   - Agile: cross-functional self-organizing teams.
+
+8. **Response to change**
+   - Waterfall: change is expensive and disruptive.
+   - Agile: change is expected and managed.
+
+9. **Planning horizon**
+   - Waterfall: long upfront planning.
+   - Agile: rolling-wave planning.
+
+10. **Best fit**
+
+- Waterfall: stable requirements, compliance-heavy contexts.
+- Agile: dynamic requirements, rapid innovation contexts.
+
+```mermaid
+flowchart TB
+    subgraph W[Waterfall]
+      W1[Requirements] --> W2[Design] --> W3[Build] --> W4[Test] --> W5[Deploy]
+    end
+
+    subgraph A[Agile]
+      A1[Backlog] --> A2[Sprint Plan] --> A3[Build and Test]
+      A3 --> A4[Increment]
+      A4 --> A5[Feedback]
+      A5 --> A1
+    end
+```
+
+---
+
+## End Note for Exam Writing
+
+For 10-mark answers, use this structure in the exam:
+
+1. Definition/introduction (1 mark)
+2. Core explanation with headings (5-6 marks)
+3. Diagram + labeling (2 marks)
+4. Conclusion/importance (1-2 marks)
+
+This pattern improves clarity and scoring consistency.
